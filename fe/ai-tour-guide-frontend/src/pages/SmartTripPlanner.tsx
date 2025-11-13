@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import backgroundImage from "../assets/SmartTrip.jpg";
+import PreferenceSelector from "../components/SmartTripcomp/PreferenceSelector";
 
 interface FormData {
   destination: string;
@@ -125,22 +126,14 @@ const SmartTripPlanner: React.FC = () => {
                 <option value="Nhóm bạn">Nhóm bạn</option>
               </select>
             </label>
-            <label className="block text-rose-900 font-semibold">
-              Sở thích:
-              <input
-                type="text"
-                placeholder="Ẩm thực, Văn hóa, Thiên nhiên..."
-                value={formData.preferences.join(", ")}
-                onChange={(e) =>
-                  handleChange(
-                    "preferences",
-                    e.target.value.split(",").map((s) => s.trim())
-                  )
-                }
-                className={inputStyle}
-              />
-            </label>
-            <div className="flex justify-between">
+
+            <h3 className="text-rose-900 font-semibold">Sở thích:</h3>
+            <PreferenceSelector
+              selected={formData.preferences}
+              onChange={(newList) => handleChange("preferences", newList)}
+            />
+
+            <div className="flex justify-between mt-4">
               <button
                 onClick={prevStep}
                 className={`${buttonStyle} bg-rose-300 text-rose-900 hover:bg-rose-400`}
@@ -156,6 +149,7 @@ const SmartTripPlanner: React.FC = () => {
             </div>
           </div>
         )}
+
 
         {/* Step 3 */}
         {step === 3 && (
