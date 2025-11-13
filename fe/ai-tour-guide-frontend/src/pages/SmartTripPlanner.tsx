@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import backgroundImage from "../assets/SmartTrip.jpg";
 import PreferenceSelector from "../components/SmartTripcomp/PreferenceSelector";
+import ItineraryCard from "../components/SmartTripcomp/ItineraryCard";
+
 
 interface FormData {
   destination: string;
@@ -17,6 +19,8 @@ interface ItineraryItem {
   morning: string;
   afternoon: string;
   evening?: string;
+  image?: string;
+  mapLink?: string;
 }
 
 const SmartTripPlanner: React.FC = () => {
@@ -31,6 +35,7 @@ const SmartTripPlanner: React.FC = () => {
     specialRequirements: "",
   });
   const [itinerary, setItinerary] = useState<ItineraryItem[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -39,19 +44,101 @@ const SmartTripPlanner: React.FC = () => {
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  const createItinerary = () => {
-    const sampleItinerary: ItineraryItem[] = [];
-    for (let i = 1; i <= formData.days; i++) {
-      sampleItinerary.push({
-        day: i,
-        morning: `Tham quan địa điểm nổi bật ở ${formData.destination}`,
-        afternoon: `Ăn trưa và khám phá ${formData.preferences.join(", ")}`,
-        evening: `Thư giãn buổi tối tại ${formData.group || "khách sạn"}`,
+  // ---- BẮT ĐẦU THAY ĐỔI ---- //
+  // Sửa lại hoàn toàn hàm createItinerary để xử lý Stream
+  const createItinerary = async () => {
+    setIsLoading(true);
+    setItinerary(null);
+
+    // Dùng biến local để tích lũy các mẩu stream
+    let fullResponse = ""; 
+
+    const preferencesString = formData.preferences.join(", ");
+    const prompt = `
+     Bạn là một chuyên gia lập kế hoạch du lịch tại Việt Nam... 
+     (Toàn bộ nội dung prompt của bạn ở đây)
+     ...
+     [
+       { "day": 1, ... }
+     ]
+   `;
+
+    try {
+      const response = await fetch("http://localhost:5000/api/gemini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: prompt }),
       });
+
+      // Xử lý lỗi nếu server của bạn trả về lỗi (ví dụ 500)
+      if (!response.ok) {
+        const errorText = await response.text(); // Đọc lỗi dưới dạng text
+        throw new Error(errorText || `Lỗi API: ${response.statusText}`);
+      }
+
+      // 1. Lấy stream body từ response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Không thể đọc stream body.");
+      }
+
+      // 2. Dùng TextDecoder để chuyển dữ liệu (Uint8Array) về string
+      const decoder = new TextDecoder();
+
+      // 3. Lặp để đọc stream
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          // Stream đã kết thúc
+          break; // Thoát vòng lặp
+        }
+
+        // 4. Giải mã mẩu dữ liệu và TÍCH LŨY vào biến fullResponse
+        const chunkText = decoder.decode(value);
+        fullResponse += chunkText;
+      }
+
+      // 5. SAU KHI STREAM KẾT THÚC:
+      // Biến fullResponse lúc này chứa chuỗi JSON hoàn chỉnh
+      // Chúng ta sẽ parse nó
+      try {
+        const parsedData = JSON.parse(fullResponse);
+        setItinerary(parsedData); // Cập nhật state với JSON đã parse
+        setStep(4); // Chuyển sang bước hiển thị kết quả
+      } catch (parseError) {
+        console.error("Lỗi parse JSON từ stream:", parseError);
+        console.error("Dữ liệu thô nhận được:", fullResponse);
+        // Ném lỗi này để khối catch bên ngoài bắt được
+        throw new Error("Lỗi: AI trả về dữ liệu không đúng định dạng JSON."); 
+      }
+
+    } catch (error) {
+      // Khối catch này bây giờ sẽ bắt cả lỗi fetch VÀ lỗi parse JSON
+      console.error("Lỗi khi tạo lịch trình:", error);
+      let errorMessage = "Lỗi không xác định";
+
+      // Khối xử lý lỗi của bạn đã tốt, giữ nguyên nó
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String((error as any).message);
+      } else {
+        errorMessage = String(error);
+      }
+      
+      alert("Đã xảy ra lỗi khi tạo lịch trình. Vui lòng thử lại.\n(Chi tiết: " + errorMessage + ")");
+
+    } finally {
+      setIsLoading(false); // Luôn tắt loading dù thành công hay thất bại
     }
-    setItinerary(sampleItinerary);
-    setStep(4);
   };
+  // ---- KẾT THÚC THAY ĐỔI ---- //
+
 
   const inputStyle =
     "w-full border border-rose-200 p-2 rounded bg-rose-50 text-rose-900 placeholder-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-300";
@@ -68,7 +155,7 @@ const SmartTripPlanner: React.FC = () => {
           Lịch trình thông minh
         </h2>
 
-        {/* Step 1 */}
+        {/* Step 1 (Không đổi) */}
         {step === 1 && (
           <div className="space-y-4">
             <label className="block text-rose-900 font-semibold">
@@ -109,7 +196,7 @@ const SmartTripPlanner: React.FC = () => {
           </div>
         )}
 
-        {/* Step 2 */}
+        {/* Step 2 (Không đổi) */}
         {step === 2 && (
           <div className="space-y-4">
             <label className="block text-rose-900 font-semibold">
@@ -151,7 +238,7 @@ const SmartTripPlanner: React.FC = () => {
         )}
 
 
-        {/* Step 3 */}
+        {/* Step 3 (Không đổi) */}
         {step === 3 && (
           <div className="space-y-4">
             <label className="block text-rose-900 font-semibold">
@@ -161,6 +248,7 @@ const SmartTripPlanner: React.FC = () => {
                 value={formData.budget}
                 onChange={(e) => handleChange("budget", Number(e.target.value))}
                 className={inputStyle}
+                disabled={isLoading}
               />
             </label>
             <label className="block text-rose-900 font-semibold">
@@ -172,42 +260,49 @@ const SmartTripPlanner: React.FC = () => {
                   handleChange("specialRequirements", e.target.value)
                 }
                 className={inputStyle}
+                disabled={isLoading}
               />
             </label>
+
+            {isLoading && (
+              <div className="text-center text-rose-700 font-semibold p-3 bg-rose-100 rounded-lg">
+                🧠 AI đang lên kế hoạch, vui lòng chờ trong giây lát...
+              </div>
+            )}
+
             <div className="flex justify-between">
               <button
                 onClick={prevStep}
                 className={`${buttonStyle} bg-rose-300 text-rose-900 hover:bg-rose-400`}
+                disabled={isLoading}
               >
                 Quay lại
               </button>
               <button
                 onClick={createItinerary}
-                className={`${buttonStyle} bg-rose-500 hover:bg-rose-600`}
+                className={`${buttonStyle} ${isLoading ? "bg-rose-300 cursor-not-allowed" : "bg-rose-500 hover:bg-rose-600"
+                  }`}
+                disabled={isLoading}
               >
-                Tạo lịch trình
+                {isLoading ? "Đang tạo..." : "Tạo lịch trình"}
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 4 */}
+        {/* Step 4 (Không đổi) */}
         {step === 4 && itinerary && (
           <div className="space-y-4">
             <h3 className="text-xl font-semibold mb-2 text-rose-900">
               Lịch trình của bạn
             </h3>
-            {itinerary.map((day) => (
-              <div
-                key={day.day}
-                className="border border-rose-200 p-2 rounded mb-2 bg-rose-50"
-              >
-                <h4 className="font-semibold text-rose-800">Ngày {day.day}</h4>
-                <p>Buổi sáng: {day.morning}</p>
-                <p>Buổi chiều: {day.afternoon}</p>
-                {day.evening && <p>Buổi tối: {day.evening}</p>}
-              </div>
-            ))}
+
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+              {itinerary.map((day) => (
+                <ItineraryCard key={day.day} day={day} />
+              ))}
+            </div>
+
             <button
               onClick={() => {
                 setFormData({
