@@ -1,11 +1,13 @@
 // src/components/MenuCard.tsx
 import React from "react";
+import { LucideProps } from "lucide-react";
 
 interface MenuCardProps {
   title: string;
   subtitle?: string; // Thêm prop cho dòng chữ thứ 2 (nếu có)
   icon?: React.ElementType;
   color?: string; // Giữ lại để có thể custom nếu muốn
+  onClick?: () => void; // Thêm prop onClick optional
 }
 
 const MenuCard: React.FC<MenuCardProps> = ({
@@ -13,6 +15,7 @@ const MenuCard: React.FC<MenuCardProps> = ({
   subtitle,
   icon: Icon,
   color,
+  onClick,
 }) => {
   // Style mặc định mô phỏng theo ảnh: nền hồng nhạt, mờ, chữ màu sẫm
   const defaultStyle =
@@ -26,6 +29,7 @@ const MenuCard: React.FC<MenuCardProps> = ({
         transition duration-200 transform hover:scale-105 active:scale-95
         ${color || defaultStyle}
       `}
+       onClick={onClick} // Gắn onClick vào div
     >
       {/* Icon (có thể điều chỉnh kích thước) */}
       {Icon && <Icon className="w-7 h-7 mb-1" />}

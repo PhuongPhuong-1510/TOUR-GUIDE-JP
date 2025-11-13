@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import MenuCard from "./MenuCard";
 // Import các icon mới: Newspaper, Users
 // Xóa các icon cũ không dùng: Map, Languages, Navigation
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 const MainMenu: React.FC = () => {
+    const navigate = useNavigate();
   return (
     <div className="p-4">
       {/* <h3 className="text-lg font-semibold text-gray-700 mb-3">Menu chính</h3> */}
@@ -21,6 +23,8 @@ const MainMenu: React.FC = () => {
           title="Lịch trình"
           subtitle="thông minh"
           icon={CalendarCheck}
+          onClick={() => navigate("/lich-trinh")} // Chỉ card này điều hướng
+
         />
 
         {/* Card 2: Đổi thành Bài viết */}
