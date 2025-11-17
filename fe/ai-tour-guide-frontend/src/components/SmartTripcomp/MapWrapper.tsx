@@ -1,12 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
-import { Activity } from '../../types/smartTrip'; // (Lưu ý: 2 dấu ..)
-// (Import interface Activity)
+import { Activity } from '../../types/smartTrip'; 
 
-// ĐẶT ACCESS TOKEN CỦA BẠN VÀO ĐÂY
-mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; 
-
+mapboxgl.accessToken = process.env.REACT_APP_MAP_API_KEY;
 interface MapWrapperProps {
   activities: Activity[];
   selectedActivityId: string | null;
