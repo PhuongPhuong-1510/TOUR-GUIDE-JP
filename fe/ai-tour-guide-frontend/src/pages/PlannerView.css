@@ -1,0 +1,56 @@
+.planner-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}
+
+.timeline-section {
+  flex: 1; /* Chiếm 1 nửa */
+  max-width: 50%; /* Hoặc set width cố định 40% */
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 2px solid #eee;
+  padding: 20px;
+  background: #fdfdfd;
+}
+
+.map-section {
+  flex: 1; /* Chiếm 1 nửa */
+  max-width: 50%;
+  height: 100vh;
+}
+
+.day-block {
+  margin-bottom: 24px;
+}
+
+.activity-card {
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.activity-card:hover {
+  background: #f0f0f0;
+}
+
+.activity-card.selected {
+  background: #fce4e4; /* Màu hồng nhạt (giống theme) */
+  border-color: #f43f5e; /* Màu hồng đậm */
+  transform: scale(1.02);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive cho Mobile */
+@media (max-width: 768px) {
+  .planner-container {
+    flex-direction: column;
+  }
+  .timeline-section, .map-section {
+    max-width: 100%;
+    height: 50vh; /* Chia đôi màn hình */
+  }
+}

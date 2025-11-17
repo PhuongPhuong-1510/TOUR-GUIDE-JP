@@ -1,34 +1,71 @@
-import React from "react";
+import React from 'react';
+
+// --- QUAN TRỌNG: 
+// Định nghĩa lại interface MỚI ở đây để component này hiểu
+// (Hoặc tốt hơn là export chúng từ file SmartTripPlanner.tsx và import vào đây)
+// ---
+
+interface Activity {
+  id: string;
+  time: string;
+  activity_name: string;
+  description: string;
+  type: 'sightseeing' | 'food' | 'transport' | 'shopping' | 'other';
+  location_name: string;
+  location_coords: {
+    lat: number;
+    lng: number;
+  };
+  estimated_duration_minutes: number;
+}
 
 interface ItineraryItem {
   day: number;
-  morning: string;
-  afternoon: string;
-  evening?: string;
+  theme_of_the_day: string;
+  activities: Activity[];
   image?: string;
-  mapLink?: string;
 }
 
-const ItineraryCard: React.FC<{ day: ItineraryItem }> = ({ day }) => (
-  <div className="bg-white/90 backdrop-blur-md border border-rose-200 p-4 rounded-xl shadow-md hover:shadow-lg transition-all">
-    <h4 className="text-lg font-bold text-rose-700 mb-2">Ngày {day.day}</h4>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div>
-        <p><strong>🌅 Sáng:</strong> {day.morning}</p>
-        <p><strong>🌞 Chiều:</strong> {day.afternoon}</p>
-        {day.evening && <p><strong>🌙 Tối:</strong> {day.evening}</p>}
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        {day.image && <img src={day.image} alt="ảnh minh họa" className="rounded-lg shadow" />}
-        {day.mapLink && (
-          <a href={day.mapLink} target="_blank" rel="noopener noreferrer"
-             className="text-sm text-rose-600 underline hover:text-rose-800">
-            Xem trên Google Maps 📍
-          </a>
-        )}
-      </div>
+// --- Hết phần Interface ---
+
+
+interface ItineraryCardProps {
+  day: ItineraryItem;
+}
+
+const ItineraryCard: React.FC<ItineraryCardProps> = ({ day }) => {
+  // Giao diện này chỉ dùng để hiển thị tóm tắt ở Step 4
+  // Nó không cần tương tác (chỉ là bản xem trước)
+  return (
+    <div className="border border-rose-200 p-4 rounded-lg bg-white shadow-sm">
+      <h4 className="text-lg font-semibold text-rose-800">
+        Ngày {day.day}: {day.theme_of_the_day}
+      </h4>
+
+      {/* Hiển thị ảnh (nếu có) */}
+      {day.image && (
+        <img 
+          src={day.image} 
+          alt={day.theme_of_the_day} 
+          className="w-full h-32 object-cover rounded-md my-2" 
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} // Ẩn nếu link ảnh lỗi
+        />
+      )}
+
+      {/* Hiển thị tóm tắt các hoạt động thay vì morning/afternoon */}
+      <p className="text-sm text-rose-700 mt-2">
+        Bao gồm {day.activities.length} hoạt động:
+      </p>
+      <ul className="list-disc list-inside text-sm text-rose-600 space-y-1 pl-2">
+        {day.activities.slice(0, 3).map((activity) => ( // Chỉ hiện 3 hoạt động đầu
+          <li key={activity.id}>
+            {activity.time} - {activity.activity_name} ({activity.type})
+          </li>
+        ))}
+        {day.activities.length > 3 && <li>... và nhiều hơn nữa.</li>}
+      </ul>
     </div>
-  </div>
-);
+  );
+};
 
 export default ItineraryCard;

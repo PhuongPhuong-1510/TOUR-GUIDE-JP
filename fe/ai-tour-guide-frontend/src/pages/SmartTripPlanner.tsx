@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import backgroundImage from "../assets/SmartTrip.jpg";
 import PreferenceSelector from "../components/SmartTripcomp/PreferenceSelector";
 import ItineraryCard from "../components/SmartTripcomp/ItineraryCard";
+import { useNavigate } from 'react-router-dom';
 
 // ... (phần interface FormData và ItineraryItem giữ nguyên) ...
 interface FormData {
@@ -14,17 +15,34 @@ interface FormData {
   specialRequirements: string;
 }
 
-interface ItineraryItem {
-  day: number;
-  morning: string;
-  afternoon: string;
-  evening?: string;
-  image?: string;
-  mapLink?: string;
+// Định nghĩa một Hoạt động (có tọa độ)
+interface Activity {
+  id: string; // Thêm ID duy nhất (ví dụ: dùng uuid hoặc AI tự tạo)
+  time: string; // VD: "09:00"
+  activity_name: string;
+  description: string;
+  type: 'sightseeing' | 'food' | 'transport' | 'shopping' | 'other';
+  location_name: string;
+  location_coords: {
+    lat: number;
+    lng: number;
+  };
+  estimated_duration_minutes: number;
 }
 
+// Cập nhật ItineraryItem để chứa mảng các hoạt động
+interface ItineraryItem {
+  day: number;
+  theme_of_the_day: string;
+  activities: Activity[]; // <--- THAY ĐỔI QUAN TRỌNG NHẤT
+  image?: string; // Giữ lại ảnh đại diện cho ngày
+}
+
+// Cập nhật state để dùng interface mới
+// const [itinerary, setItinerary] = useState<ItineraryItem[] | null>(null);
 
 const SmartTripPlanner: React.FC = () => {
+  const navigate = useNavigate();
   // ... (phần state và các hàm khác giữ nguyên) ...
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
@@ -46,20 +64,18 @@ const SmartTripPlanner: React.FC = () => {
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-
-  // ---- BẮT ĐẦU THAY ĐỔI (Chỉ thay đổi khối 'try...catch' ở mục 5) ---- //
+  // Logic tạo lịch trình (Giữ nguyên như code cũ của bạn)
   const createItinerary = async () => {
     setIsLoading(true);
     setItinerary(null);
 
     let fullResponse = "";
-
     const preferencesString = formData.preferences.join(", ");
-    // ---- BẮT ĐẦU PROMPT TEMPLATE MỚI ---- //
+
     const prompt = `
 **[BẮT BUỘC]**
 Bạn là một chuyên gia lập kế hoạch du lịch địa phương siêu chi tiết.
-bạn tạo kế hoạc siêu nhanh giúp tôi
+
 **MỤC TIÊU:**
 Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trên các thông tin sau:
 * **Thành phố (Điểm đến):** ${formData.destination}
@@ -68,45 +84,86 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
 * **Nhóm đi:** ${formData.group}
 * **Sở thích:** ${preferencesString}
 * **Ngân sách (tham khảo):** ${formData.budget} VNĐ
-* **Yêu cầu đặc biệt:** ${formData.specialRequirements || "Không có"}
+* **Yêu cầu đặc biệt:** ${formData.specialRequirements || 'Không có'}
 
 ---
 
-**YÊU CẦU ĐỊNH DẠNG JSON (CỰC KỲ QUAN TRỌNG):**
+**Yêu CẦU ĐỊNH DẠNG JSON (CỰC KỲ QUAN TRỌNG):**
 
 1.  **CHỈ** trả về một mảng JSON (JSON array) hợp lệ.
 2.  **KHÔNG** được thêm bất kỳ văn bản giới thiệu nào (như "Đây là lịch trình của bạn:"), không thêm giải thích, không thêm \`\`\`json.
 3.  Toàn bộ phản hồi của bạn PHẢI bắt đầu bằng ký tự \`[\` và kết thúc bằng ký tự \`]\`.
-4.  Mỗi phần tử trong mảng là một object đại diện cho MỘT NGÀY, và phải tuân theo cấu trúc sau:
+4.  Mỗi phần tử trong mảng là một object đại diện cho MỘT NGÀY:
 
     {
-      "day": <Số thứ tự ngày, bắt đầu từ 1>,
-      "morning": "<Kế hoạch buổi sáng. **Phải bao gồm:** 1 gợi ý quán ăn sáng/cafe VÀ hướng dẫn di chuyển (VD: đi Grab 15 phút, đi bộ 5 phút, tuyến bus số X...).>",
-      "afternoon": "<Kế hoạch buổi chiều. **Phải bao gồm:** 1 gợi ý quán ăn trưa VÀ hướng dẫn di chuyển đến địa điểm buổi chiều.>",
-      "evening": "<Kế hoạch buổi tối. **Phải bao gồm:** 1 gợi ý quán ăn tối VÀ 1-2 gợi ý khách sạn ở khu vực lân cận (phù hợp với ngân sách).>",
-      "image": "<Một URL hình ảnh HỢP LỆ (từ Google, Unsplash, Pexels...) đại diện cho địa điểm nổi bật NHẤT trong ngày.>",
-      "mapLink": "<Một URL Google Maps HỢP LỆ trỏ đến địa điểm chính của buổi SÁNG hoặc CHIỀU (VD: https://www.google.com/maps/place/...).>"
+      "day": <Số thứ tự ngày>,
+      "theme_of_the_day": "<Chủ đề của ngày (VD: Khám phá Phố Cổ)>",
+      "image": "<Một URL hình ảnh HỢP LỆ (từ Google, Unsplash...) đại diện cho ngày đó>",
+      "activities": [
+        // Đây là một mảng chứa các hoạt động
+        {
+          "id": "<Một ID chuỗi ngẫu nhiên duy nhất (VD: 'act-123')>",
+          "time": "<Thời gian (VD: '09:00')>",
+          "activity_name": "<Tên hoạt động (VD: 'Ăn sáng Phở Bát Đàn')>",
+          "description": "<Mô tả ngắn gọn (VD: 'Thưởng thức phở gia truyền nổi tiếng.')>",
+          "type": "<Một trong các loại: 'sightseeing', 'food', 'transport', 'shopping', 'other'>",
+          "location_name": "<Tên địa điểm (VD: 'Phở Bát Đàn')>",
+          "location_coords": { 
+            "lat": <kinh độ (VD: 21.033)>, 
+            "lng": <vĩ độ (VD: 105.843)> 
+          },
+          "estimated_duration_minutes": <Số phút ước tính (VD: 60)>
+        },
+        {
+          "id": "<act-124>",
+          "time": "<10:30>",
+          "activity_name": "<Tham quan Văn Miếu - Quốc Tử Giám>",
+          "description": "<Trường đại học đầu tiên của Việt Nam.>",
+          "type": "sightseeing",
+          "location_name": "Văn Miếu - Quốc Tử Giám",
+          "location_coords": { "lat": 21.029, "lng": 105.837 },
+          "estimated_duration_minutes": 120
+        },
+        // ... (thêm các hoạt động khác cho ngày)
+      ]
     }
 
 **VÍ DỤ VỀ 1 NGÀY TRONG MẢNG (Ví dụ cho Hà Nội):**
 
     {
       "day": 1,
-      "morning": "Thăm Lăng Bác và Chùa Một Cột. Gợi ý ăn sáng: Phở Bát Đàn (cách 10 phút Grab). Di chuyển từ Lăng Bác sang Chùa Một Cột: đi bộ 5 phút.",
-      "afternoon": "Khám phá Văn Miếu - Quốc Tử Giám. Gợi ý ăn trưa: Bún chả Hàng Quạt (cách 5 phút Grab). Di chuyển đến Văn Miếu: đi bus tuyến 02 (15 phút).",
-      "evening": "Dạo bộ Hồ Gươm và ăn tối tại Phố Cổ. Gợi ý ăn tối: Chả cá Lã Vọng. Gợi ý khách sạn gần đó: Khách sạn Peridot Grand (sang trọng) hoặc Khách sạn Hanoi Pearl (tầm trung).",
-      "image": "https://example.com/images/ho_guom.jpg",
-      "mapLink": "https://www.google.com/maps/place/Hoan+Kiem+Lake"
+      "theme_of_the_day": "Hồn cốt ngàn năm",
+      "image": "https://example.com/images/van_mieu.jpg",
+      "activities": [
+        {
+          "id": "act-001",
+          "time": "08:30",
+          "activity_name": "Ăn sáng Bún chả Hàng Quạt",
+          "description": "Bắt đầu ngày mới với bún chả que tre truyền thống.",
+          "type": "food",
+          "location_name": "Bún chả Hàng Quạt",
+          "location_coords": { "lat": 21.031, "lng": 105.847 },
+          "estimated_duration_minutes": 45
+        },
+        {
+          "id": "act-002",
+          "time": "09:30",
+          "activity_name": "Tham quan Văn Miếu - Quốc Tử Giám",
+          "description": "Di chuyển bằng Grab (10 phút) đến Văn Miếu.",
+          "type": "sightseeing",
+          "location_name": "Văn Miếu - Quốc Tử Giám",
+          "location_coords": { "lat": 21.029, "lng": 105.837 },
+          "estimated_duration_minutes": 120
+        }
+      ]
     }
     
 ---
 **BẮT ĐẦU TẠO LỊCH TRÌNH (Chỉ trả về JSON Array):**
 [
 `;
-    // ---- KẾT THÚC PROMPT TEMPLATE MỚI ---- //
 
     try {
-      // Phần fetch và đọc stream giữ nguyên
       const response = await fetch("http://localhost:5000/api/gemini", {
         method: "POST",
         headers: {
@@ -136,39 +193,22 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
         fullResponse += chunkText;
       }
 
-      // 5. SAU KHI STREAM KẾT THÚC:
-      // ---- BẮT ĐẦU SỬA LỖI JSON ----
       try {
-        // Dữ liệu thô (fullResponse) có thể là:
-        // "Tuyệt vời! Đây là lịch trình của bạn: \n```json\n[{\"day\": 1, ...}]\n```"
-
-        // 1. Tìm điểm bắt đầu của JSON array (ký tự '[')
         const jsonStart = fullResponse.indexOf('[');
-
-        // 2. Tìm điểm kết thúc của JSON array (ký tự ']')
-        // Chúng ta dùng lastIndexOf để tìm ký tự ']' cuối cùng
         const jsonEnd = fullResponse.lastIndexOf(']');
 
         if (jsonStart === -1 || jsonEnd === -1 || jsonEnd < jsonStart) {
-          // Nếu không tìm thấy [ hoặc ], hoặc ] ở trước [
-          console.error("Dữ liệu thô nhận được (Không tìm thấy JSON):", fullResponse);
+          console.error("Dữ liệu thô nhận được:", fullResponse);
           throw new Error("Không tìm thấy JSON array `[... ]` hợp lệ trong phản hồi.");
         }
 
-        // 3. Cắt chuỗi JSON sạch ra
         const jsonString = fullResponse.substring(jsonStart, jsonEnd + 1);
-
-        // 4. Parse chuỗi đã cắt
-        // (Nếu vẫn lỗi ở đây, có thể do chuỗi JSON bị lỗi cú pháp)
         const parsedData = JSON.parse(jsonString);
 
-        setItinerary(parsedData); // Cập nhật state
-        setStep(4); // Chuyển sang bước hiển thị
-
+        setItinerary(parsedData);
+        setStep(4);
       } catch (parseError) {
         console.error("Lỗi parse JSON từ stream:", parseError);
-        // Dòng này CỰC KỲ QUAN TRỌNG:
-        // Hãy mở Console (F12) để xem AI đã trả về chính xác cái gì!
         console.error("DỮ LIỆU THÔ NHẬN ĐƯỢC:", fullResponse);
 
         let errorMsg = "Lỗi: AI trả về dữ liệu không đúng định dạng JSON.";
@@ -177,7 +217,6 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
         }
         throw new Error(errorMsg);
       }
-      // ---- KẾT THÚC SỬA LỖI JSON ----
 
     } catch (error) {
       console.error("Lỗi khi tạo lịch trình:", error);
@@ -199,10 +238,17 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
       setIsLoading(false);
     }
   };
-  // ---- KẾT THÚC THAY ĐỔI ---- //
 
+  // Hàm xử lý khi bấm nút Xem chi tiết (Placeholder)
+  const handleViewDetails = () => {
+    if (itinerary) {
+      // Chuyển sang trang mới và mang theo dữ liệu 'itinerary'
+      navigate('/planner-details', { state: { itineraryData: itinerary } });
+    } else {
+      alert("Lỗi: Không có dữ liệu lịch trình để hiển thị.");
+    }
+  };
 
-  // ... (Phần return JSX không thay đổi) ...
   const inputStyle =
     "w-full border border-rose-200 p-2 rounded bg-rose-50 text-rose-900 placeholder-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-300";
   const buttonStyle =
@@ -210,10 +256,20 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
 
   return (
     <div
-      className="flex items-center justify-center min-h-screen bg-cover bg-center"
+      className="flex items-center justify-center min-h-screen bg-cover bg-center p-4"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      <div className="p-6 max-w-xl w-full mx-auto bg-white/80 backdrop-blur-md rounded-2xl shadow-lg">
+      {/* THAY ĐỔI Ở ĐÂY: 
+          Sử dụng toán tử ba ngôi để đổi class chiều rộng.
+          Nếu step === 4 thì dùng max-w-4xl (hoặc 5xl, 6xl tùy bạn), ngược lại dùng max-w-xl 
+          Thêm transition-all duration-500 để hiệu ứng mượt mà.
+      */}
+      <div
+        className={`
+            p-6 w-full mx-auto bg-white/80 backdrop-blur-md rounded-2xl shadow-lg transition-all duration-500 ease-in-out
+            ${step === 4 ? 'max-w-5xl' : 'max-w-xl'}
+        `}
+      >
         <h2 className="text-2xl font-semibold mb-4 text-rose-900">
           Lịch trình thông minh
         </h2>
@@ -352,37 +408,50 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
           </div>
         )}
 
-        {/* Step 4 (Không đổi) */}
+        {/* Step 4 (Có thay đổi nút bấm) */}
         {step === 4 && itinerary && (
           <div className="space-y-4">
             <h3 className="text-xl font-semibold mb-2 text-rose-900">
               Lịch trình của bạn
             </h3>
 
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+            {/* Phần hiển thị ItineraryCard có thể cần grid nếu màn hình rộng hơn, 
+                nhưng để giữ nguyên logic cũ ta cứ để list dọc */}
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               {itinerary.map((day) => (
                 <ItineraryCard key={day.day} day={day} />
               ))}
             </div>
 
-            <button
-              onClick={() => {
-                setFormData({
-                  destination: "",
-                  startDate: "",
-                  days: 1,
-                  budget: 0,
-                  preferences: [],
-                  group: "",
-                  specialRequirements: "",
-                });
-                setItinerary(null);
-                setStep(1);
-              }}
-              className={`${buttonStyle} bg-rose-500 hover:bg-rose-600`}
-            >
-              Tạo lại lịch trình khác
-            </button>
+            {/* THAY ĐỔI Ở ĐÂY: Khu vực nút bấm */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setFormData({
+                    destination: "",
+                    startDate: "",
+                    days: 1,
+                    budget: 0,
+                    preferences: [],
+                    group: "",
+                    specialRequirements: "",
+                  });
+                  setItinerary(null);
+                  setStep(1);
+                }}
+                className={`${buttonStyle} bg-rose-500 hover:bg-rose-600 flex-1`}
+              >
+                Tạo lại lịch trình khác
+              </button>
+
+              {/* Nút mới: Xem chi tiết */}
+              <button
+                onClick={handleViewDetails}
+                className={`${buttonStyle} bg-rose-500 hover:bg-rose-600 flex-1`}
+              >
+                Xem chi tiết
+              </button>
+            </div>
           </div>
         )}
       </div>
