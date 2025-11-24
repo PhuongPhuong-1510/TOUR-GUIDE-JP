@@ -384,7 +384,7 @@ Tạo một kế hoạch du lịch hàng ngày cho một chuyến đi dựa trê
 
             {isLoading && (
               <div className="text-center text-rose-700 font-semibold p-3 bg-rose-100 rounded-lg">
-                🧠 AI đang lên kế hoạch, vui lòng chờ trong giây lát...
+                🧠 Đang lên kế hoạch, vui lòng chờ trong giây lát...
               </div>
             )}
 
